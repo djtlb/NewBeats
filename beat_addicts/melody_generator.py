@@ -38,7 +38,24 @@ def get_optimal_device():
     else:
         device = 'cpu'
         print("💻 Using CPU")
-        torch.set_num_threads(min(8, torch.get_num_threads()))  # Optimize CPU usage
+        
+        # Optimize CPU performance
+        import multiprocessing
+        cpu_count = multiprocessing.cpu_count()
+        optimal_threads = min(cpu_count, 8)  # Cap at 8 for stability
+        torch.set_num_threads(optimal_threads)
+        
+        # Enable additional CPU optimizations
+        if hasattr(torch.backends, 'mkldnn'):
+            torch.backends.mkldnn.enabled = True
+            print(f"🔧 MKL-DNN acceleration enabled")
+        
+        # Set additional optimization flags
+        torch.set_flush_denormal(True)
+        
+        print(f"🔧 CPU optimization: Using {optimal_threads} threads from {cpu_count} available cores")
+        print("💡 Note: AMD GPU detected but PyTorch ROCm support limited on Windows")
+        print("💡 For GPU acceleration, consider using Linux with ROCm drivers")
     
     return device
 
@@ -423,19 +440,44 @@ class MelodyGenerator:
     
     def get_device_info(self) -> dict:
         """Get information about the current device setup."""
+        import subprocess
+        import multiprocessing
+        
         # Calculate CPU optimization info
         cpu_threads = torch.get_num_threads()
+        total_cpu_cores = multiprocessing.cpu_count()
         cpu_optimized = cpu_threads >= 4
+        
+        # Try to detect GPU information
+        gpu_info = "None detected"
+        try:
+            # Try to get GPU info on Windows
+            result = subprocess.run(['wmic', 'path', 'win32_VideoController', 'get', 'name'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                for line in lines[1:]:  # Skip header
+                    line = line.strip()
+                    if line and 'amd' in line.lower():
+                        gpu_info = f"{line} (AMD - Limited PyTorch support on Windows)"
+                    elif line and 'nvidia' in line.lower():
+                        gpu_info = f"{line} (NVIDIA - CUDA supported)"
+                    elif line and line != "Name":
+                        gpu_info = line
+        except:
+            pass
         
         info = {
             "device": self.device.upper(),
             "device_status": "Optimized" if cpu_optimized or self.device != 'cpu' else "Standard",
             "torch_version": torch.__version__,
             "cuda_available": torch.cuda.is_available(),
+            "gpu_hardware": gpu_info,
             "jukebox_available": JUKEBOX_AVAILABLE,
             "using_jukebox": self.use_jukebox,
             "max_duration": self.max_duration,
             "cpu_threads": cpu_threads,
+            "total_cpu_cores": total_cpu_cores,
             "audio_processing": "Enhanced with post-processing",
             "model_variants": len(self.available_models),
             "generation_quality": "Professional" if self.max_duration >= 60 else "Standard"
@@ -449,9 +491,10 @@ class MelodyGenerator:
             })
         elif self.device == 'cpu':
             info.update({
-                "cpu_optimization": "Multi-threaded processing enabled",
+                "cpu_optimization": f"Multi-threaded processing ({cpu_threads}/{total_cpu_cores} cores)",
                 "memory_efficiency": "Optimized for CPU generation",
-                "processing_mode": "CPU-optimized algorithms"
+                "processing_mode": "CPU-optimized algorithms with MKL-DNN",
+                "performance_note": "For best performance with AMD GPU, consider Linux + ROCm"
             })
         
         return info
