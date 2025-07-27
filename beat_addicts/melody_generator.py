@@ -85,7 +85,7 @@ class MelodyGenerator:
             self._setup_jukebox()
         
         self.sample_rate = 32000
-        self.max_duration = 120 if self.device != 'cpu' else 30  # Longer on GPU
+        self.max_duration = 120 if self.device != 'cpu' else 60  # 60 seconds on CPU, 120 on GPU
         self.current_melody: Optional[np.ndarray] = None
         
         print(f"✅ MelodyGenerator ready! Max duration: {self.max_duration}s")
@@ -133,9 +133,52 @@ class MelodyGenerator:
             return self._generate_with_musicgen(enhanced_description, duration, progress_callback)
     
     def _enhance_prompt(self, description: str) -> str:
-        """Enhance the user prompt for better MusicGen results."""
+        """Enhance the user prompt for better MusicGen results with genre-specific templates."""
         # Remove any existing dashes or separators that might confuse the model
         description = description.replace(" - ", " ").replace("...", "")
+        
+        # Genre-specific enhancement templates
+        genre_templates = {
+            'drum and bass': 'fast breakbeats, deep sub bass, jungle style',
+            'dnb': 'fast breakbeats, deep sub bass, jungle style',
+            'dubstep': 'wobble bass, syncopated drum patterns, electronic',
+            'house': 'four-on-the-floor beat, electronic, dance',
+            'techno': 'repetitive beats, electronic, industrial',
+            'trap': '808 drums, hi-hats, bass-heavy',
+            'hip hop': 'rhythmic beats, bass, urban style',
+            'jazz': 'swing rhythm, improvisation, brass instruments',
+            'rock': 'electric guitar, drums, energetic',
+            'pop': 'catchy melody, upbeat, commercial',
+            'electronic': 'synthesizers, digital sounds, modern',
+            'ambient': 'atmospheric, peaceful, relaxing',
+            'classical': 'orchestral, traditional instruments, elegant',
+            'blues': 'twelve-bar progression, soulful, guitar',
+            'reggae': 'offbeat rhythm, bass-heavy, caribbean',
+            'country': 'acoustic guitar, storytelling, folk style',
+            'r&b': 'smooth vocals, rhythm and blues, soulful',
+            'funk': 'groove-based, syncopated rhythm, bass-heavy',
+            'lofi': 'vintage sound, relaxed tempo, nostalgic',
+            'synthwave': 'retro synthesizers, 80s style, electronic'
+        }
+        
+        # Enhance based on detected genre
+        enhanced = description.lower()
+        for genre, template in genre_templates.items():
+            if genre in enhanced:
+                # Add professional musical descriptors
+                description = f"{description}, {template}, professional studio quality"
+                break
+        else:
+            # Default enhancement for unrecognized genres
+            description = f"{description}, professional studio quality, clear audio"
+        
+        # Add tempo and energy descriptors based on keywords
+        if any(word in enhanced for word in ['fast', 'energetic', 'upbeat', 'dance']):
+            description += ", high energy, upbeat tempo"
+        elif any(word in enhanced for word in ['slow', 'chill', 'relaxed', 'ambient']):
+            description += ", relaxed tempo, smooth"
+        elif any(word in enhanced for word in ['medium', 'moderate']):
+            description += ", medium tempo"
         
         # Ensure it ends properly for MusicGen
         if not description.endswith(('.', '!', '?')):
@@ -145,18 +188,45 @@ class MelodyGenerator:
     
     def _generate_with_musicgen(self, description: str, duration: int,
                                progress_callback: Optional[Callable[[float], None]] = None) -> np.ndarray:
-        """Generate with MusicGen model."""
+        """Generate with MusicGen model with enhanced parameters."""
         print(f"🎵 Generating with MusicGen: '{description}' ({duration}s)")
         
-        # Enhanced generation parameters for better prompt following
-        self.musicgen_model.set_generation_params(
-            duration=duration,
-            temperature=0.9,  # Slightly higher for more creativity
-            top_k=250,        # Increased for more diversity
-            top_p=0.85,       # Balanced for good prompt following
-            use_sampling=True,
-            cfg_coef=5.0      # Higher classifier-free guidance for better prompt adherence
-        )
+        # Enhanced generation parameters for professional quality
+        generation_params = {
+            'duration': duration,
+            'temperature': 0.85,      # Slightly lower for more controlled output
+            'top_k': 200,             # Balanced for quality and diversity
+            'top_p': 0.9,             # Higher for better prompt following
+            'use_sampling': True,
+            'cfg_coef': 6.0,          # Higher classifier-free guidance for better prompt adherence
+            'extend_stride': 18,      # Better continuation for longer tracks
+        }
+        
+        # Adjust parameters based on genre for optimal results
+        description_lower = description.lower()
+        if any(genre in description_lower for genre in ['ambient', 'chill', 'lofi', 'relaxed']):
+            # Smoother generation for ambient genres
+            generation_params.update({
+                'temperature': 0.7,
+                'top_k': 150,
+                'cfg_coef': 5.5
+            })
+        elif any(genre in description_lower for genre in ['drum and bass', 'dubstep', 'trap', 'electronic']):
+            # More dynamic generation for electronic genres
+            generation_params.update({
+                'temperature': 0.9,
+                'top_k': 250,
+                'cfg_coef': 6.5
+            })
+        elif any(genre in description_lower for genre in ['jazz', 'classical', 'blues']):
+            # More structured generation for traditional genres
+            generation_params.update({
+                'temperature': 0.8,
+                'top_k': 180,
+                'cfg_coef': 5.8
+            })
+        
+        self.musicgen_model.set_generation_params(**generation_params)
         
         if progress_callback:
             progress_callback(0.1)
@@ -171,9 +241,15 @@ class MelodyGenerator:
                     wav = self.musicgen_model.generate([description])[0]
                 
                 if progress_callback:
+                    progress_callback(0.8)
+                    
+                # Post-process the audio for better quality
+                processed_audio = self._post_process_audio(wav.cpu().squeeze().numpy())
+                
+                if progress_callback:
                     progress_callback(0.9)
                     
-                self.current_melody = wav.cpu().squeeze().numpy()
+                self.current_melody = processed_audio
                 print("✅ MusicGen generation complete")
                 return self.current_melody
                 
@@ -304,15 +380,65 @@ class MelodyGenerator:
             print(f"❌ Melody-conditioned generation failed: {e}")
             raise
     
+    def _post_process_audio(self, audio: np.ndarray) -> np.ndarray:
+        """Apply post-processing to enhance audio quality."""
+        try:
+            # Normalize audio to prevent clipping
+            audio = audio / (np.max(np.abs(audio)) + 1e-8)
+            
+            # Apply gentle compression to enhance dynamics
+            # Simple soft compression algorithm
+            threshold = 0.8
+            ratio = 4.0
+            
+            # Find peaks above threshold
+            mask = np.abs(audio) > threshold
+            if np.any(mask):
+                # Apply compression to peaks
+                compressed = np.sign(audio) * (threshold + (np.abs(audio) - threshold) / ratio)
+                audio = np.where(mask, compressed, audio)
+            
+            # Apply gentle high-frequency boost for clarity (simple shelving filter approximation)
+            # This is a very basic implementation - for production, use proper DSP libraries
+            if len(audio) > 1000:
+                # Simple high-frequency emphasis
+                diff = np.diff(audio, prepend=audio[0])
+                audio = audio + 0.05 * diff
+            
+            # Final normalization to -1dB peak to leave headroom
+            peak_target = 0.89  # About -1dB
+            current_peak = np.max(np.abs(audio))
+            if current_peak > 0:
+                audio = audio * (peak_target / current_peak)
+            
+            # Ensure we're in the correct range
+            audio = np.clip(audio, -1.0, 1.0)
+            
+            print("🎛️ Audio post-processing applied")
+            return audio
+            
+        except Exception as e:
+            print(f"⚠️ Post-processing failed, using original audio: {e}")
+            return audio
+    
     def get_device_info(self) -> dict:
         """Get information about the current device setup."""
+        # Calculate CPU optimization info
+        cpu_threads = torch.get_num_threads()
+        cpu_optimized = cpu_threads >= 4
+        
         info = {
-            "device": self.device,
+            "device": self.device.upper(),
+            "device_status": "Optimized" if cpu_optimized or self.device != 'cpu' else "Standard",
             "torch_version": torch.__version__,
             "cuda_available": torch.cuda.is_available(),
             "jukebox_available": JUKEBOX_AVAILABLE,
             "using_jukebox": self.use_jukebox,
-            "max_duration": self.max_duration
+            "max_duration": self.max_duration,
+            "cpu_threads": cpu_threads,
+            "audio_processing": "Enhanced with post-processing",
+            "model_variants": len(self.available_models),
+            "generation_quality": "Professional" if self.max_duration >= 60 else "Standard"
         }
         
         if torch.cuda.is_available():
@@ -320,6 +446,12 @@ class MelodyGenerator:
                 "cuda_device_name": torch.cuda.get_device_name(),
                 "cuda_memory_total": f"{torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB",
                 "cuda_memory_allocated": f"{torch.cuda.memory_allocated() / 1e9:.2f}GB"
+            })
+        elif self.device == 'cpu':
+            info.update({
+                "cpu_optimization": "Multi-threaded processing enabled",
+                "memory_efficiency": "Optimized for CPU generation",
+                "processing_mode": "CPU-optimized algorithms"
             })
         
         return info

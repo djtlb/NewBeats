@@ -1,0 +1,12 @@
+Genre: UK Jump-Up style Drum and Bass
+
+Generated Lyrics:
+endless loops x3 endless errors x3
+
+Music Prompt: UK Jump-Up style Drum and Bass style music with the following theme: endless loops x3 endless errors x3
+Model Quality: medium
+Voice Style: default
+Vocals File: Generation failed
+Duration: 20s
+Device: cpu
+Generated: 2025-07-27T14:04:37.486635
