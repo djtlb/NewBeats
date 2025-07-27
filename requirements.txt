@@ -6,3 +6,6 @@ soundfile==0.12.1
 pydub==0.25.1
 diffusers==0.16.0
 click==8.1.0
+audiocraft
+flask>=3.0.0
+flask-cors>=6.0.0

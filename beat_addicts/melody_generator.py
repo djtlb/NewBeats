@@ -121,25 +121,41 @@ class MelodyGenerator:
             Generated audio as numpy array
         """
         duration = min(duration, self.max_duration)
+        
+        # Enhance the prompt for better MusicGen understanding
+        enhanced_description = self._enhance_prompt(description)
+        
         use_jb = use_jukebox if use_jukebox is not None else self.use_jukebox
         
         if use_jb and self.jukebox_model:
-            return self._generate_with_jukebox(description, duration, progress_callback)
+            return self._generate_with_jukebox(enhanced_description, duration, progress_callback)
         else:
-            return self._generate_with_musicgen(description, duration, progress_callback)
+            return self._generate_with_musicgen(enhanced_description, duration, progress_callback)
+    
+    def _enhance_prompt(self, description: str) -> str:
+        """Enhance the user prompt for better MusicGen results."""
+        # Remove any existing dashes or separators that might confuse the model
+        description = description.replace(" - ", " ").replace("...", "")
+        
+        # Ensure it ends properly for MusicGen
+        if not description.endswith(('.', '!', '?')):
+            description += "."
+            
+        return description.strip()
     
     def _generate_with_musicgen(self, description: str, duration: int,
                                progress_callback: Optional[Callable[[float], None]] = None) -> np.ndarray:
         """Generate with MusicGen model."""
         print(f"🎵 Generating with MusicGen: '{description}' ({duration}s)")
         
+        # Enhanced generation parameters for better prompt following
         self.musicgen_model.set_generation_params(
             duration=duration,
-            temperature=0.8,
-            top_k=200,
-            top_p=0.9,
+            temperature=0.9,  # Slightly higher for more creativity
+            top_k=250,        # Increased for more diversity
+            top_p=0.85,       # Balanced for good prompt following
             use_sampling=True,
-            cfg_coef=3.0  # Classifier-free guidance
+            cfg_coef=5.0      # Higher classifier-free guidance for better prompt adherence
         )
         
         if progress_callback:

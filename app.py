@@ -59,7 +59,16 @@ class WebMelodyGenerator:
             
             # Stage 2: Build song description
             update_progress(0.3, "Building music prompt...")
-            music_prompt = f"{genre_prompt} - {lyrics[:100]}..."
+            
+            # Create a more effective prompt for MusicGen
+            if lyrics_prompt.strip():
+                # If user provided lyrics, use them to enhance the genre
+                music_prompt = f"{genre_prompt} with {lyrics_prompt.strip()}"
+            else:
+                # If no lyrics, use just the genre with some musical descriptors
+                music_prompt = f"{genre_prompt} music"
+            
+            print(f"🎯 Using music prompt: '{music_prompt}'")
             
             # Stage 3: Generate melody
             update_progress(0.4, "Generating melody...")
@@ -180,14 +189,16 @@ def get_examples():
     """Get example prompts for the UI."""
     examples = {
         'genres': [
-            "Upbeat electronic dance music with heavy bass",
-            "Chill ambient guitar with soft drums",
-            "Jazz fusion with piano and saxophone",
-            "Rock ballad with electric guitar solos",
-            "Hip-hop beat with trap influences",
-            "Classical orchestral piece with strings",
-            "Reggae with relaxed bass lines",
-            "Country music with acoustic guitar"
+            "upbeat electronic dance music",
+            "chill lo-fi hip hop",
+            "jazz piano with drums",
+            "rock with electric guitar",
+            "ambient electronic",
+            "classical piano",
+            "reggae with bass",
+            "country acoustic guitar",
+            "trap beat with 808s",
+            "house music with synths"
         ],
         'lyrics_themes': [
             "A song about chasing dreams and never giving up",

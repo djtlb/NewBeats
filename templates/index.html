@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beat Addicts - AI Music Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .card h2 {
+            color: #764ba2;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .results-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e8;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+
+        .error-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #ffeaea;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .device-info {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .examples {
+            margin-top: 15px;
+        }
+
+        .example-btn {
+            display: inline-block;
+            background: rgba(102,126,234,0.1);
+            color: #667eea;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid rgba(102,126,234,0.3);
+            transition: all 0.2s ease;
+        }
+
+        .example-btn:hover {
+            background: rgba(102,126,234,0.2);
+        }
+
+        .audio-player {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.2s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .history-section {
+            margin-top: 40px;
+        }
+
+        .history-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .history-info {
+            flex: 1;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Beat Addicts</h1>
+            <p>AI-Powered Music Generation Studio</p>
+            <div id="deviceInfo" class="device-info"></div>
+        </div>
+
+        <div class="main-content">
+            <!-- Generation Form -->
+            <div class="card">
+                <h2>🎼 Create Your Music</h2>
+                <form id="musicForm">
+                    <div class="form-group">
+                        <label for="genrePrompt">🎨 Genre & Style *</label>
+                        <textarea 
+                            id="genrePrompt" 
+                            placeholder="Describe the genre, style, instruments, and mood...
+Example: Upbeat electronic dance music with heavy bass and synthesizers"
+                            required
+                        ></textarea>
+                        <div class="examples">
+                            <strong>Quick Examples:</strong>
+                            <div id="genreExamples"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lyricsPrompt">📝 Lyrics Theme (Optional)</label>
+                        <textarea 
+                            id="lyricsPrompt" 
+                            placeholder="Describe the theme or story for lyrics (leave empty for auto-generated)...
+Example: A song about chasing dreams and never giving up"
+                        ></textarea>
+                        <div class="examples">
+                            <strong>Theme Ideas:</strong>
+                            <div id="lyricsExamples"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">⏱️ Duration</label>
+                        <select id="duration">
+                            <option value="10">10 seconds (Quick)</option>
+                            <option value="15" selected>15 seconds (Standard)</option>
+                            <option value="20">20 seconds (Extended)</option>
+                            <option value="30">30 seconds (Long)</option>
+                            <option value="45">45 seconds (Very Long)</option>
+                            <option value="60">60 seconds (Maximum)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn" id="generateBtn">
+                        🎵 Generate Music
+                    </button>
+                </form>
+
+                <!-- Progress -->
+                <div id="progressContainer" class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div id="progressText" class="progress-text">Initializing...</div>
+                </div>
+
+                <!-- Results -->
+                <div id="resultsContainer" class="results-container">
+                    <h3>✅ Generation Complete!</h3>
+                    <audio id="audioPlayer" class="audio-player" controls></audio>
+                    <div id="lyricsDisplay"></div>
+                    <div class="download-links">
+                        <a id="downloadAudio" class="download-btn" href="#" download>📥 Download Audio</a>
+                        <a id="downloadLyrics" class="download-btn" href="#" download>📄 Download Lyrics</a>
+                    </div>
+                </div>
+
+                <!-- Error -->
+                <div id="errorContainer" class="error-container">
+                    <h3>❌ Generation Failed</h3>
+                    <div id="errorMessage"></div>
+                </div>
+            </div>
+
+            <!-- Info & History -->
+            <div class="card">
+                <h2>📊 System Status</h2>
+                <div id="systemStatus"></div>
+                
+                <h2 style="margin-top: 30px;">📚 Recent Generations</h2>
+                <div id="historyContainer">
+                    <div class="loading"></div>
+                    <span>Loading history...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSessionId = null;
+        let progressInterval = null;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDeviceInfo();
+            loadExamples();
+            loadHistory();
+            setupForm();
+        });
+
+        // Load device information
+        async function loadDeviceInfo() {
+            try {
+                const response = await fetch('/api/device-info');
+                const info = await response.json();
+                
+                const deviceInfoEl = document.getElementById('deviceInfo');
+                deviceInfoEl.innerHTML = `
+                    <strong>Device:</strong> ${info.device.toUpperCase()} | 
+                    <strong>PyTorch:</strong> ${info.torch_version} | 
+                    <strong>Max Duration:</strong> ${info.max_duration}s
+                    ${info.cuda_available ? ` | <strong>GPU:</strong> ${info.cuda_device_name}` : ''}
+                `;
+
+                const statusEl = document.getElementById('systemStatus');
+                statusEl.innerHTML = `
+                    <p><strong>Device:</strong> ${info.device.toUpperCase()}</p>
+                    <p><strong>CUDA Available:</strong> ${info.cuda_available ? '✅ Yes' : '❌ No'}</p>
+                    <p><strong>Jukebox:</strong> ${info.jukebox_available ? '✅ Available' : '❌ Not Available'}</p>
+                    <p><strong>Max Duration:</strong> ${info.max_duration} seconds</p>
+                    ${info.cuda_available ? `<p><strong>GPU Memory:</strong> ${info.cuda_memory_total}</p>` : ''}
+                `;
+            } catch (error) {
+                console.error('Failed to load device info:', error);
+            }
+        }
+
+        // Load example prompts
+        async function loadExamples() {
+            try {
+                const response = await fetch('/api/examples');
+                const examples = await response.json();
+                
+                const genreExamplesEl = document.getElementById('genreExamples');
+                genreExamplesEl.innerHTML = examples.genres.map(genre => 
+                    `<span class="example-btn" onclick="fillGenre('${genre}')">${genre}</span>`
+                ).join('');
+
+                const lyricsExamplesEl = document.getElementById('lyricsExamples');
+                lyricsExamplesEl.innerHTML = examples.lyrics_themes.map(theme => 
+                    `<span class="example-btn" onclick="fillLyrics('${theme}')">${theme}</span>`
+                ).join('');
+            } catch (error) {
+                console.error('Failed to load examples:', error);
+            }
+        }
+
+        // Fill example text
+        function fillGenre(text) {
+            document.getElementById('genrePrompt').value = text;
+        }
+
+        function fillLyrics(text) {
+            document.getElementById('lyricsPrompt').value = text;
+        }
+
+        // Setup form submission
+        function setupForm() {
+            document.getElementById('musicForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await generateMusic();
+            });
+        }
+
+        // Generate music
+        async function generateMusic() {
+            const genrePrompt = document.getElementById('genrePrompt').value.trim();
+            const lyricsPrompt = document.getElementById('lyricsPrompt').value.trim();
+            const duration = parseInt(document.getElementById('duration').value);
+
+            if (!genrePrompt) {
+                alert('Please enter a genre/style description!');
+                return;
+            }
+
+            // Hide previous results/errors
+            document.getElementById('resultsContainer').style.display = 'none';
+            document.getElementById('errorContainer').style.display = 'none';
+            
+            // Show progress
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('generateBtn').innerHTML = '<div class="loading"></div> Generating...';
+
+            try {
+                // Start generation
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        genre: genrePrompt,
+                        lyrics: lyricsPrompt,
+                        duration: duration
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                currentSessionId = result.session_id;
+                startProgressTracking();
+
+            } catch (error) {
+                showError(error.message);
+                resetGenerateButton();
+            }
+        }
+
+        // Track generation progress
+        function startProgressTracking() {
+            progressInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/progress/${currentSessionId}`);
+                    const progress = await response.json();
+
+                    updateProgress(progress.progress || 0, progress.stage || 'Processing...');
+
+                    if (progress.status === 'complete') {
+                        clearInterval(progressInterval);
+                        showResults(progress);
+                        resetGenerateButton();
+                        loadHistory(); // Refresh history
+                    } else if (progress.status === 'error') {
+                        clearInterval(progressInterval);
+                        showError(progress.error || 'Unknown error occurred');
+                        resetGenerateButton();
+                    }
+                } catch (error) {
+                    clearInterval(progressInterval);
+                    showError('Failed to track progress: ' + error.message);
+                    resetGenerateButton();
+                }
+            }, 1000);
+        }
+
+        // Update progress display
+        function updateProgress(percentage, stage) {
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `${stage} (${percentage}%)`;
+        }
+
+        // Show results
+        function showResults(results) {
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+
+            // Setup audio player
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = `/api/download/${results.audio_file}`;
+
+            // Show lyrics
+            const lyricsDisplay = document.getElementById('lyricsDisplay');
+            lyricsDisplay.innerHTML = `
+                <h4>📝 Generated Lyrics:</h4>
+                <pre style="white-space: pre-wrap; background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">${results.lyrics_content}</pre>
+            `;
+
+            // Setup download links
+            document.getElementById('downloadAudio').href = `/api/download/${results.audio_file}`;
+            document.getElementById('downloadLyrics').href = `/api/download/${results.lyrics_file}`;
+        }
+
+        // Show error
+        function showError(message) {
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        // Reset generate button
+        function resetGenerateButton() {
+            document.getElementById('generateBtn').disabled = false;
+            document.getElementById('generateBtn').innerHTML = '🎵 Generate Music';
+        }
+
+        // Load generation history
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+                
+                const historyContainer = document.getElementById('historyContainer');
+                
+                if (history.length === 0) {
+                    historyContainer.innerHTML = '<p>No generations yet. Create your first song!</p>';
+                    return;
+                }
+
+                historyContainer.innerHTML = history.map(item => `
+                    <div class="history-item">
+                        <div class="history-info">
+                            <strong>${item.genre || 'Unknown Genre'}</strong><br>
+                            <small>${new Date(item.created).toLocaleString()} | ${item.size_mb}MB | ${item.duration || 'Unknown duration'}</small>
+                        </div>
+                        <div class="history-actions">
+                            <a href="/api/download/${item.audio_file}" class="download-btn" download>🎵 Audio</a>
+                            ${item.lyrics_file ? `<a href="/api/download/${item.lyrics_file}" class="download-btn" download>📄 Lyrics</a>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                document.getElementById('historyContainer').innerHTML = '<p>Failed to load history.</p>';
+            }
+        }
+    </script>
+</body>
+</html>

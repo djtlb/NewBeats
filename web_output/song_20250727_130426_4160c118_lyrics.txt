@@ -1,0 +1,9 @@
+Genre: Uk style Drum and Bass, Jump-Up
+
+Generated Lyrics:
+endless loops
+
+Music Prompt: Uk style Drum and Bass, Jump-Up - endless loops...
+Duration: 60s
+Device: cpu
+Generated: 2025-07-27T13:04:26.636782
